@@ -24,7 +24,7 @@ dev = ["pytest>=7.0", "ruff>=0.4"]
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["causal_edge*"]
+include = ["causal_edge*", "examples*", "strategies*"]
 
 [tool.setuptools.package-data]
 "causal_edge" = [
