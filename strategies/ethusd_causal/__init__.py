@@ -1,0 +1,1 @@
+"""ETHUSD causal strategy package."""

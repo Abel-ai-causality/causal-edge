@@ -1,0 +1,10 @@
+{
+  "target": "ETHUSD",
+  "source": "Abel Causal Graph (discover ETHUSD)",
+  "description": "ETHUSD parent set discovered via Abel. Default lag/window settings follow the causal demo heuristics.",
+  "parents": [
+    {"ticker": "SSTK", "field": "price", "type": "parent"}
+  ],
+  "children": [],
+  "note": "Discovered with causal-edge discover ETHUSD --limit 5"
+}

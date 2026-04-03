@@ -1,0 +1,46 @@
+"""Trade log read/write. Single source of truth for trade log CSV format."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
+
+REQUIRED_COLUMNS = ("date", "pnl", "position", "cum_pnl", "source")
+
+
+def read_trade_log(path: str | Path) -> pd.DataFrame:
+    """Read a trade log CSV. Returns DataFrame with standard columns."""
+    df = pd.read_csv(path, parse_dates=["date"])
+    return df
+
+
+def write_trade_log(
+    dates: pd.DatetimeIndex,
+    pnl: np.ndarray,
+    positions: np.ndarray,
+    path: str | Path,
+    source: str = "backfill",
+) -> None:
+    """Write a trade log CSV from strategy output arrays.
+
+    Args:
+        dates: Trading dates
+        pnl: Daily PnL (position * returns)
+        positions: Daily position sizes
+        path: Output CSV path
+        source: "backfill" or "live"
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    df = pd.DataFrame({
+        "date": dates,
+        "pnl": pnl,
+        "position": positions,
+        "cum_pnl": np.cumsum(pnl),
+        "source": source,
+    })
+    df.to_csv(path, index=False)

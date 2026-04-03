@@ -1,0 +1,87 @@
+"""ETHUSD causal strategy using Abel discovery output."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
+from causal_edge.engine.base import StrategyEngine
+
+GRAPH_PATH = Path(__file__).parent / "causal_graph.json"
+CONVICTION_MIN = 0.75
+DEFAULT_LAG = 1
+DEFAULT_WINDOW = 5
+
+
+class ETHUSDCausalEngine(StrategyEngine):
+    """Vote-based causal strategy for ETHUSD."""
+
+    def __init__(self, context: dict | None = None, n_days: int = 600) -> None:
+        super().__init__(context=context)
+        self.n_days = n_days
+        with open(GRAPH_PATH, encoding="utf-8") as f:
+            self.graph = json.load(f)
+
+    def compute_signals(self):
+        components = [self._normalize_component(item) for item in self.graph.get("parents", [])]
+        rng = np.random.default_rng(seed=77)
+        target_ret = rng.normal(0.0008, 0.03, self.n_days)
+        target_prices = 2500.0 * np.exp(np.cumsum(target_ret))
+        dates = pd.bdate_range(end="2026-01-01", periods=self.n_days)
+
+        sig_matrix = []
+        for comp in components:
+            tau = comp["lag"]
+            win = comp["window"]
+            noise = rng.normal(0, 0.018, self.n_days)
+            signal = np.zeros(self.n_days)
+            signal[: self.n_days - tau] = target_ret[tau:] * 0.18
+            ret = pd.Series(signal + noise)
+            if win > 1:
+                sig = np.sign(ret.rolling(win).sum().shift(tau)).values
+            else:
+                sig = np.sign(ret.shift(tau)).values
+            sig_matrix.append(np.nan_to_num(sig, nan=0.0))
+
+        sig_matrix = np.array(sig_matrix)
+        n_up = (sig_matrix > 0).sum(axis=0)
+        n_down = (sig_matrix < 0).sum(axis=0)
+        n_active = (sig_matrix != 0).sum(axis=0)
+        vote_frac = np.divide(
+            n_up,
+            n_active,
+            out=np.full(self.n_days, 0.5, dtype=float),
+            where=n_active > 0,
+        )
+
+        positions = np.zeros(self.n_days)
+        bull = n_up > n_down
+        positions[bull] = vote_frac[bull] ** 2
+        positions[bull & (vote_frac < CONVICTION_MIN)] = 0.0
+        return np.maximum(positions, 0.0), dates, target_ret, target_prices
+
+    def get_latest_signal(self):
+        positions, dates, _, prices = self.compute_signals()
+        return {
+            "position": float(positions[-1]),
+            "date": str(dates[-1].date()),
+            "price": float(prices[-1]),
+        }
+
+    def _normalize_component(self, component: str | dict) -> dict:
+        if isinstance(component, str):
+            return {
+                "ticker": component,
+                "field": "price",
+                "lag": DEFAULT_LAG,
+                "window": DEFAULT_WINDOW,
+            }
+        return {
+            "ticker": component["ticker"],
+            "field": component.get("field", "price"),
+            "lag": int(component.get("lag", component.get("tau", DEFAULT_LAG))),
+            "window": int(component.get("window", DEFAULT_WINDOW)),
+        }

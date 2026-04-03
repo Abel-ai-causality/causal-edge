@@ -1,0 +1,18 @@
+{
+  "target": "TONUSD",
+  "source": "Abel Causal Graph (cap.abel.ai)",
+  "description": "Causal neighborhood of TONUSD - 5 equity parents and 3 children discovered via Abel's causal graph API. Demo defaults use lag=1 and window=5 unless manually overridden.",
+  "parents": [
+    {"ticker": "GBLI", "field": "price", "type": "parent"},
+    {"ticker": "HSON", "field": "price", "type": "parent"},
+    {"ticker": "SITC", "field": "price", "type": "parent"},
+    {"ticker": "EVC", "field": "price", "type": "parent"},
+    {"ticker": "EAI", "field": "price", "type": "parent"}
+  ],
+  "children": [
+    {"ticker": "ESBA", "field": "price", "type": "child", "lag": 2},
+    {"ticker": "SIRI", "field": "price", "type": "child", "lag": 3},
+    {"ticker": "TVC", "field": "price", "type": "child", "lag": 2, "window": 8}
+  ],
+  "note": "To discover causal parents for other assets, use Abel API: causal-edge discover <TICKER>"
+}
